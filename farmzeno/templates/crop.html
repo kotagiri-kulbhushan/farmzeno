@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}FarmZeno — Crop Recommendations{% endblock %}
+{% block content %}
+<div class="hero-bar hero-crop">
+  <div class="hero-bg-overlay"></div>
+  <div class="hero-inner hero-inner-simple">
+    <div class="hero-tagline">RandomForest · 95.6% Accuracy</div>
+    <h1 class="hero-title">Crop Recommendations</h1>
+    <p class="hero-sub">ML-powered crop suggestions using live weather data</p>
+  </div>
+</div>
+<div class="container">
+  <div class="form-card">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">City / Location</label>
+        <input type="text" id="cropCity" class="form-input" placeholder="e.g. Ludhiana"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Soil pH <span class="form-hint">(optional, default 6.5)</span></label>
+        <input type="number" id="cropPH" class="form-input" placeholder="6.5" min="3" max="10" step="0.1" value="6.5"/>
+      </div>
+      <div class="form-group form-btn-group">
+        <button class="btn-primary" onclick="fetchCropRec()">Get Recommendations</button>
+      </div>
+    </div>
+    <div class="form-note">
+      💡 Our AI model uses Temperature, Humidity, Soil pH &amp; Rainfall to predict the most suitable crop for your conditions.
+    </div>
+  </div>
+
+  <div id="cropLoading" class="loading-box hidden"><div class="spinner"></div><p>Fetching weather &amp; running ML model...</p></div>
+  <div id="cropError" class="error-box hidden"></div>
+
+  <div id="cropResult" class="hidden">
+    <div id="cropMeta" class="result-meta"></div>
+
+    <!-- ML Result -->
+    <div id="mlResult" class="ml-result-box hidden">
+      <div class="ml-result-header">
+        <span class="ml-badge">🤖 ML Model Prediction</span>
+        <span class="ml-accuracy">RandomForest · 95.6% accuracy</span>
+      </div>
+      <div class="ml-main">
+        <div class="ml-crop-icon" id="mlCropIcon"></div>
+        <div>
+          <div class="ml-label">Best Recommended Crop</div>
+          <div class="ml-crop-name" id="mlCropName"></div>
+          <div class="ml-conf" id="mlCropConf"></div>
+        </div>
+      </div>
+      <div class="ml-inputs-row" id="mlInputsRow"></div>
+    </div>
+
+    <div id="mlFallback" class="warning-box hidden">
+      ⚠️ ML model not loaded. Place <code>best_crop_model.pkl</code>, <code>crop_scaler.pkl</code>, and <code>crop_label_encoder.pkl</code> in the <code>models/</code> folder.
+    </div>
+
+    <!-- Top 5 crops -->
+    <div id="top5Section" class="hidden">
+      <div class="section-label" style="margin-top:2rem">Top 5 Crop Predictions</div>
+      <div class="top5-list" id="cropTop5List"></div>
+    </div>
+
+    <!-- Management tips -->
+    <div class="section-label" style="margin-top:2rem">Weather-based Management Tips</div>
+    <div class="tips-grid" id="tipsList"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function fetchCropRec(){
+  const city=document.getElementById('cropCity').value.trim();
+  const ph=parseFloat(document.getElementById('cropPH').value)||6.5;
+  if(!city){alert('Please enter a city name.');return;}
+  hide('cropResult'); hide('cropError'); show('cropLoading');
+  fetch('/api/crop-recommend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({city,ph})})
+    .then(r=>r.json()).then(data=>{
+      hide('cropLoading');
+      if(data.error){showErr('cropError',data.error);return;}
+      saveCity(city); renderCrop(data);
+    }).catch(e=>{hide('cropLoading');showErr('cropError','Network error: '+e.message);});
+}
+
+function renderCrop(data){
+  const w=data.weather, f=data.forecast, rec=data.recommendations;
+  document.getElementById('cropMeta').innerHTML=`<div class="meta-chips">
+    <span class="chip chip-green">📍 ${data.city}</span>
+    <span class="chip chip-blue">🌡️ ${w.temp}°C &nbsp;|&nbsp; 💧 ${w.humidity}%</span>
+    <span class="chip chip-amber">💨 ${w.wind_speed} m/s &nbsp;|&nbsp; 🌧️ ${f.rain_total_24h} mm (24h)</span>
+    <span class="chip chip-teal">🧪 pH ${rec.input_features.ph}</span>
+  </div>`;
+
+  if(rec.ml_available && rec.recommended_crop){
+    document.getElementById('mlCropIcon').textContent = getCropEmoji(rec.recommended_crop);
+    document.getElementById('mlCropName').textContent = rec.recommended_crop;
+    const topConf = rec.top5_crops.length ? rec.top5_crops[0][1] : '—';
+    document.getElementById('mlCropConf').textContent = 'Model confidence: '+topConf+'%';
+    document.getElementById('mlInputsRow').innerHTML=`
+      <div class="ml-input-chip">🌡️ Temp: ${rec.input_features.temperature}°C</div>
+      <div class="ml-input-chip">💧 Humidity: ${rec.input_features.humidity}%</div>
+      <div class="ml-input-chip">🧪 pH: ${rec.input_features.ph}</div>
+      <div class="ml-input-chip">🌧️ Rainfall: ${rec.input_features.rainfall_24h_mm} mm</div>`;
+    show('mlResult');
+    hide('mlFallback');
+
+    if(rec.top5_crops && rec.top5_crops.length>1){
+      document.getElementById('cropTop5List').innerHTML=rec.top5_crops.map((t,i)=>`
+        <div class="top5-item">
+          <span class="top5-rank">#${i+1}</span>
+          <span class="top5-name">${getCropEmoji(t[0])} ${t[0]}</span>
+          <div class="top5-bar-wrap"><div class="top5-bar" style="width:${Math.min(t[1],100)}%"></div></div>
+          <span class="top5-pct">${t[1]}%</span>
+        </div>`).join('');
+      show('top5Section');
+    }
+  } else {
+    hide('mlResult'); show('mlFallback'); hide('top5Section');
+  }
+
+  const tips=rec.management_tips||[];
+  document.getElementById('tipsList').innerHTML=tips.length?
+    tips.map(t=>'<div class="tip-card">'+t+'</div>').join(''):
+    '<p class="muted">No specific tips for current conditions.</p>';
+
+  show('cropResult');
+}
+
+const CROP_EMOJI={rice:'🌾',wheat:'🌾',maize:'🌽',corn:'🌽',millet:'🌾',sorghum:'🌾',
+  cotton:'🌿',sugarcane:'🎋',coffee:'☕',tea:'🍵',coconut:'🥥',papaya:'🍈',
+  mango:'🥭',banana:'🍌',grapes:'🍇',apple:'🍎',muskmelon:'🍈',watermelon:'🍉',
+  tomato:'🍅',potato:'🥔',onion:'🧅',lentil:'🫘',chickpea:'🫘',rice:'🌾'};
+function getCropEmoji(name){
+  const c=name.toLowerCase().replace(/\s/g,'');
+  for(const[k,e] of Object.entries(CROP_EMOJI)){ if(c.includes(k)) return e; }
+  return '🌱';
+}
+
+const saved=getSavedCity(); if(saved) document.getElementById('cropCity').value=saved;
+document.getElementById('cropCity').addEventListener('keydown',e=>{if(e.key==='Enter')fetchCropRec();});
+</script>
+{% endblock %}

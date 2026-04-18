@@ -1,0 +1,39 @@
+# Environment variables — NEVER commit
+.env
+farmzeno/.env
+
+# Large model files — add manually
+models/
+farmzeno/models/
+
+# Runtime generated folders
+instance/
+farmzeno/instance/
+
+user_reports/
+farmzeno/user_reports/
+
+imd_cache/
+farmzeno/imd_cache/
+
+uploads/*.jpg
+uploads/*.jpeg
+uploads/*.png
+uploads/*.webp
+farmzeno/uploads/*.jpg
+farmzeno/uploads/*.jpeg
+farmzeno/uploads/*.png
+farmzeno/uploads/*.webp
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Database
+*.db
+farmzeno/*.db
+
+# OS files
+.DS_Store
+Thumbs.db

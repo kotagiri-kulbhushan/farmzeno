@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — FarmZeno</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  display: flex;
+  height: 100vh;
+}
+
+/* LEFT SIDE */
+.left {
+  flex: 1;
+  background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)),
+              url('https://images.unsplash.com/photo-1500382017468-9049fed747ef');
+  background-size: cover;
+  background-position: center;
+  color: white;
+  padding: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.left-text {
+  margin-top: 200px;
+  margin-left : 45px;   /* 👈 adjust this */
+}
+.logo-left img {
+  height: 50px;
+}
+
+.left-text h1 {
+  font-size: 36px;
+  margin-bottom: 15px;
+}
+
+.left-text p {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.stats {
+  display: flex;
+  gap: 40px;
+  margin-top: 30px;
+}
+
+.stats div {
+  font-size: 18px;
+}
+
+/* RIGHT SIDE */
+.right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.form-box {
+  width: 350px;
+}
+
+.logo-right {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.logo-right img {
+  height: 45px;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 14px;
+  color: gray;
+  margin-bottom: 25px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #3a7a1a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #2f6414;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.footer a {
+  color: #3a7a1a;
+  text-decoration: none;
+}
+.left-text {
+  max-width: 500px;
+}
+.left-text h1 {
+  font-size: 42px;
+  line-height: 1.3;
+}
+
+.left-text p {
+  margin-top: 10px;
+}
+.brand-heading {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.brand-heading .farm {
+  color: #a6fc00; /* green */
+}
+
+.brand-heading .zeno {
+  color: #e8621a; /* orange */
+}
+</style>
+</head>
+
+<body>
+
+<!-- LEFT -->
+<div class="left">
+
+
+  <div class="left-text">
+
+
+    <h2 class="brand-heading">
+      <span class="farm">Farm</span><span class="zeno">Zeno</span>
+    </h2>
+    <h1>Smart farming starts with the right advisory.</h1>
+    <p>Access real-time weather, IMD bulletins, AI disease detection and crop recommendations.</p>
+
+  </div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="right">
+  <div class="form-box">
+
+    <div class="logo-right">
+      <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="FarmZeno">
+    </div>
+
+    <h2>Welcome Back</h2>
+    <p class="subtitle">Sign in to your account</p>
+
+    <form method="POST">
+      <input type="email" name="email" placeholder="Email address" required>
+      <input type="password" name="password" placeholder="Password" required>
+
+      <button type="submit">Sign In</button>
+    </form>
+
+    <div class="footer">
+      Don’t have an account? <a href="/register">Create one</a>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

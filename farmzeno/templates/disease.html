@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}FarmZeno — Plant Disease Detection
+{% endblock %}
+{% block content %}
+<div class="hero-bar hero-disease">
+  <div class="hero-bg-overlay"></div>
+  <div class="hero-inner hero-inner-simple">
+    <div class="hero-tagline">AI-Powered Leaf Analysis</div>
+    <h1 class="hero-title">Plant Disease<br>Detection</h1>
+    <p class="hero-sub">Upload a clear leaf photo and our AI identifies the disease instantly</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="upload-zone" id="uploadZone"
+       ondragover="event.preventDefault();this.classList.add('drag-over')"
+       ondragleave="this.classList.remove('drag-over')"
+       ondrop="handleDrop(event)">
+    <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFile(this.files[0])"/>
+    <div class="upload-prompt" id="uploadPrompt">
+      <div class="upload-camera-icon">
+        <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="38" fill="#eef8f2" stroke="#b6dfc4" stroke-width="1.5"/>
+          <!-- Camera body -->
+          <rect x="16" y="28" width="48" height="34" rx="5" fill="none" stroke="#3a7a1a" stroke-width="2.2"/>
+          <!-- Viewfinder bump -->
+          <path d="M30 28 L33 22 H47 L50 28" fill="none" stroke="#3a7a1a" stroke-width="2.2" stroke-linejoin="round"/>
+          <!-- Lens outer -->
+          <circle cx="40" cy="45" r="10" fill="none" stroke="#3a7a1a" stroke-width="2"/>
+          <!-- Lens inner -->
+          <circle cx="40" cy="45" r="6" fill="#c2e8d0"/>
+          <!-- Lens highlight -->
+          <circle cx="40" cy="45" r="3" fill="#3a7a1a" opacity="0.5"/>
+          <!-- Flash -->
+          <rect x="52" y="33" width="6" height="4" rx="1.5" fill="#e8621a"/>
+          <!-- Small circle indicator -->
+          <circle cx="23" cy="35" r="2.5" fill="none" stroke="#e8621a" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <h2>Drop a leaf image here</h2>
+      <p>or <span class="upload-link" onclick="document.getElementById('fileInput').click()">browse your files</span></p>
+      <p class="upload-hint">JPG · PNG · WEBP &nbsp;|&nbsp; Max 10 MB</p>
+    </div>
+    <div class="upload-preview hidden" id="uploadPreview">
+      <img id="previewImg" src="" alt="Leaf preview"/>
+      <button class="btn-clear" onclick="clearImage()">✕ Remove</button>
+    </div>
+  </div>
+
+  <div class="analyse-row">
+    <button class="btn-analyse" onclick="predictDisease()">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+      Analyse Disease
+    </button>
+  </div>
+
+  <div id="diseaseLoading" class="loading-box hidden"><div class="spinner"></div><p>Running AI model analysis...</p></div>
+  <div id="diseaseError" class="error-box hidden"></div>
+
+  <div id="diseaseResult" class="hidden">
+    <div class="disease-result-card">
+      <div class="drc-left">
+        <div class="drc-badge">AI Detection Result</div>
+        <div class="drc-disease-name" id="diseaseName"></div>
+        <div class="drc-conf-row">
+          <span class="drc-conf-label">Confidence</span>
+          <span class="drc-conf-value" id="diseaseConf"></span>
+        </div>
+        <div class="drc-bar-wrap"><div class="drc-bar" id="confBar"></div></div>
+      </div>
+      <div class="drc-right" id="drcPreviewThumb"></div>
+    </div>
+
+    <div class="section-heading" style="margin-top:2rem">
+      <span class="section-dot green-dot"></span>Top 5 Predictions
+    </div>
+    <div class="top5-list" id="top5List"></div>
+
+    <div class="download-row" style="margin-top:1.8rem">
+      <button id="saveDiseaseBtn" class="btn-save-report" onclick="saveDiseaseReport()" style="display:none">
+        <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg>
+        Save to My Reports
+      </button>
+      <button class="btn-download-report" id="downloadDiseaseBtn" onclick="downloadDiseaseReport()">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Download Disease Report (PDF)
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+let selectedFile = null;
+let lastResult   = null;
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+}
+
+function handleFile(file){
+  if(!file||!file.type.startsWith('image/')){alert('Please select an image file.');return;}
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('previewImg').src = ev.target.result;
+    hide('uploadPrompt'); show('uploadPreview');
+  };
+  reader.readAsDataURL(file);
+  hide('diseaseResult'); hide('diseaseError');
+}
+
+function clearImage(){
+  selectedFile = null; lastResult = null;
+  document.getElementById('previewImg').src = '';
+  show('uploadPrompt'); hide('uploadPreview'); hide('diseaseResult');
+  document.getElementById('fileInput').value = '';
+}
+
+function predictDisease(){
+  if(!selectedFile){alert('Please upload a plant image first.');return;}
+  show('diseaseLoading'); hide('diseaseResult'); hide('diseaseError');
+  const fd = new FormData(); fd.append('file', selectedFile);
+  fetch('/api/predict',{method:'POST',body:fd})
+    .then(r=>r.json()).then(data=>{
+      hide('diseaseLoading');
+      if(data.error){showErr('diseaseError',data.error);return;}
+      lastResult = data;
+      renderDisease(data);
+    }).catch(e=>{hide('diseaseLoading');showErr('diseaseError','Network error: '+e.message);});
+}
+
+function renderDisease(data){
+  document.getElementById('diseaseName').textContent = data.disease;
+  const pct = Math.round(data.confidence);
+  document.getElementById('diseaseConf').textContent = pct + '%';
+  const bar = document.getElementById('confBar');
+  bar.style.width = '0%';
+  bar.style.background = pct>70?'#e8621a':pct>45?'#e8a020':'#3a7a1a';
+  setTimeout(()=>{ bar.style.width = pct+'%'; }, 60);
+
+  // thumb
+  const thumb = document.getElementById('drcPreviewThumb');
+  if(document.getElementById('previewImg').src){
+    thumb.innerHTML = '<img src="'+document.getElementById('previewImg').src+'" alt="leaf"/>';
+  }
+
+  document.getElementById('top5List').innerHTML = (data.top5||[]).map((t,i)=>`
+    <div class="top5-item">
+      <span class="top5-rank">#${i+1}</span>
+      <span class="top5-name">${t[0]}</span>
+      <div class="top5-bar-wrap"><div class="top5-bar" style="width:${Math.min(Math.round(t[1]),100)}%"></div></div>
+      <span class="top5-pct">${t[1]}%</span>
+    </div>`).join('');
+
+  // Store result globally for saving
+  window._lastDiseaseResult = data;
+  const previewSrc = document.getElementById('previewImg') ? document.getElementById('previewImg').src : '';
+  window._lastDiseaseImageB64 = previewSrc && previewSrc.startsWith('data:') ? previewSrc : '';
+  // Show save button
+  const saveBtn = document.getElementById('saveDiseaseBtn');
+  if (saveBtn) saveBtn.style.display = 'inline-flex';
+  show('diseaseResult');
+}
+
+function downloadDiseaseReport(){
+  if(!lastResult){ alert('Please analyse an image first.'); return; }
+  const imgSrc = document.getElementById('previewImg').src || '';
+  const payload = { result: lastResult, image_b64: imgSrc };
+  const btn = document.getElementById('downloadDiseaseBtn');
+  btn.textContent = '⏳ Generating PDF...';
+  btn.disabled = true;
+  fetch('/api/disease-report', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).then(r=>{
+    if(!r.ok) throw new Error('PDF generation failed');
+    return r.blob();
+  }).then(blob=>{
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'FarmZeno_Disease_Report.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+    btn.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Download Disease Report (PDF)';
+    btn.disabled = false;
+  }).catch(e=>{
+    alert('Error generating report: '+e.message);
+    btn.innerHTML = 'Download Disease Report (PDF)';
+    btn.disabled = false;
+  });
+}
+</script>
+
+
+<script>
+async function saveDiseaseReport() {
+  const btn = document.getElementById('saveDiseaseBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = 'Saving...';
+  try {
+    const result = window._lastDiseaseResult;
+    if (!result) throw new Error('No result to save');
+    const imgB64 = window._lastDiseaseImageB64 || '';
+    // Fetch PDF
+    const pdfRes = await fetch('/api/disease-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result, image_b64: imgB64 })
+    });
+    if (!pdfRes.ok) throw new Error('PDF fetch failed: ' + pdfRes.status);
+    const blob = await pdfRes.blob();
+    const reader = new FileReader();
+    reader.onload = async function () {
+      const b64 = reader.result.split(',')[1];
+      const title = 'Disease: ' + (result.disease || 'Detection') + ' — ' + new Date().toLocaleDateString();
+      const saveRes = await fetch('/api/save-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'disease', title, pdf_b64: b64 })
+      });
+      const d = await saveRes.json();
+      if (d.success) {
+        btn.innerHTML = '✓ Saved to My Reports';
+        btn.style.background = '#1a5c0e';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg> Save to My Reports';
+          btn.style.background = '';
+        }, 3000);
+      } else {
+        throw new Error(d.error || 'Save failed');
+      }
+    };
+    reader.readAsDataURL(blob);
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = 'Save Failed';
+    setTimeout(() => { btn.innerHTML = 'Save to My Reports'; }, 3000);
+  }
+}
+</script>
+<style>
+.btn-save-report {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; background: #1a3a0a; color: #fff;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer; transition: background 0.2s;
+  margin-right: 10px;
+}
+.btn-save-report:hover { background: #0f2206; }
+.btn-save-report:disabled { opacity: 0.7; cursor: not-allowed; }
+</style>
+{% endblock %}

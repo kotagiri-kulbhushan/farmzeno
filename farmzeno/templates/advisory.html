@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}FarmZeno — Crop Advisory
+{% endblock %}
+{% block content %}
+<div class="hero-bar hero-advisory">
+  <div class="hero-bg-overlay"></div>
+  <div class="hero-inner hero-inner-simple">
+    <div class="hero-tagline">Official IMD Bulletins + RAG</div>
+    <h1 class="hero-title">Crop Advisory</h1>
+    <p class="hero-sub">IMD bulletin-based advisory with live weather intelligence</p>
+  </div>
+</div>
+<div class="container">
+  <div class="form-card">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">City / Location</label>
+        <input type="text" id="advCity" class="form-input" placeholder="e.g. Ludhiana"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Crop (optional filter)</label>
+        <input type="text" id="advCrop" class="form-input" placeholder="e.g. wheat, rice, cotton"/>
+      </div>
+      <div class="form-group form-btn-group">
+        <button class="btn-primary" onclick="fetchAdvisory()">Generate Advisory</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="advLoading" class="loading-box hidden"><div class="spinner"></div><p>Downloading IMD bulletin &amp; generating advisory... This may take 30–60 seconds.</p></div>
+  <div id="advError" class="error-box hidden"></div>
+
+  <div id="advResult" class="hidden">
+    <div id="advMeta" class="result-meta"></div>
+    <div class="section-label">Top Priority Advisories</div>
+    <div id="topAdvisories" class="top-advisory-list"></div>
+    <div class="section-label" style="margin-top:2rem">Category-wise Advisory</div>
+    <div id="catAdvisories" class="cat-grid"></div>
+    <div class="download-row" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <button class="btn-download" onclick="downloadReport()">⬇ Download PDF Report</button>
+      <button id="saveAdvisoryBtn" class="btn-save-report" onclick="saveAdvisoryReport()">
+        <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg>
+        Save to My Reports
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const CAT_ICONS={
+  'Weather warnings':'⛈️','Crop pest/disease alert':'🐛',
+  'Irrigation guidance':'💧','Spraying / fertilizer guidance':'🧪',
+  'Harvest / storage / field operations':'🌾'
+};
+const CAT_COLORS={
+  'Weather warnings':'cat-red','Crop pest/disease alert':'cat-orange',
+  'Irrigation guidance':'cat-blue','Spraying / fertilizer guidance':'cat-purple',
+  'Harvest / storage / field operations':'cat-green'
+};
+
+function fetchAdvisory(){
+  const city=document.getElementById('advCity').value.trim();
+  const crop=document.getElementById('advCrop').value.trim();
+  if(!city){alert('Please enter a city name.');return;}
+  hide('advResult'); hide('advError'); show('advLoading');
+  fetch('/api/advisory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({city,crop})})
+    .then(r=>r.json()).then(data=>{
+      hide('advLoading');
+      if(data.error){showErr('advError',data.error);return;}
+      saveCity(city); renderAdvisory(data);
+    }).catch(e=>{hide('advLoading');showErr('advError','Network error: '+e.message);});
+}
+
+function renderAdvisory(data){
+  const w=data.weather,f=data.forecast_24h;
+  document.getElementById('advMeta').innerHTML=`<div class="meta-chips">
+    <span class="chip chip-green">📍 ${data.city}${data.state?' — '+data.state:''}</span>
+    <span class="chip chip-blue">🌡️ ${w.temp}°C &nbsp;|&nbsp; 💧 ${w.humidity}%</span>
+    <span class="chip chip-amber">💨 ${w.wind_speed} m/s &nbsp;|&nbsp; 🌧️ ${f.rain_total_24h} mm (24h)</span>
+    ${data.bulletin_level?'<span class="chip chip-teal">📄 '+data.bulletin_level+' bulletin</span>':'<span class="chip chip-amber">⚠ Weather-only (no bulletin)</span>'}
+    ${data.crop?'<span class="chip chip-purple">🌾 '+data.crop+'</span>':''}
+  </div>${data.warning?'<div class="warning-banner">⚠ '+data.warning+'</div>':''}`;
+
+  const tops=data.top_advisories||[];
+  document.getElementById('topAdvisories').innerHTML=tops.length?tops.map((a,i)=>`
+    <div class="top-adv-item">
+      <span class="adv-rank">${i+1}</span>
+      <div><div class="adv-cat-badge">${a[1]}</div><div class="adv-text">${a[2]}</div></div>
+    </div>`).join(''):'<p class="muted">No ranked advisories found.</p>';
+
+  const cats=data.categorized_advisory||{};
+  document.getElementById('catAdvisories').innerHTML=Object.entries(cats).map(([cat,pts])=>`
+    <div class="cat-card ${CAT_COLORS[cat]||''}">
+      <div class="cat-header"><span class="cat-icon">${CAT_ICONS[cat]||'📌'}</span><span class="cat-title">${cat}</span><span class="cat-count">${pts.length}</span></div>
+      <ul class="cat-list">${pts.length?pts.map(p=>'<li>'+p+'</li>').join(''):'<li class="muted">No advisories in this category.</li>'}</ul>
+    </div>`).join('');
+
+  show('advResult');
+}
+
+function downloadReport(){
+  const city=document.getElementById('advCity').value.trim();
+  const crop=document.getElementById('advCrop').value.trim();
+  if(!city) return;
+  window.location.href='/api/download-report?city='+encodeURIComponent(city)+'&crop='+encodeURIComponent(crop);
+}
+
+const saved=getSavedCity(); if(saved) document.getElementById('advCity').value=saved;
+document.getElementById('advCity').addEventListener('keydown',e=>{if(e.key==='Enter')fetchAdvisory();});
+</script>
+
+
+<script>
+async function saveAdvisoryReport() {
+  const btn = document.getElementById('saveAdvisoryBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px"><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Saving...';
+  try {
+    const city = document.getElementById('advCity').value.trim();
+    const crop = document.getElementById('advCrop').value.trim();
+    const pdfRes = await fetch('/api/download-report?city=' + encodeURIComponent(city) + '&crop=' + encodeURIComponent(crop));
+    if (!pdfRes.ok) throw new Error('PDF fetch failed: ' + pdfRes.status);
+    const blob = await pdfRes.blob();
+    const reader = new FileReader();
+    reader.onload = async function () {
+      const b64 = reader.result.split(',')[1];
+      const title = 'Advisory — ' + city + (crop ? ' (' + crop + ')' : '') + ' — ' + new Date().toLocaleDateString();
+      const saveRes = await fetch('/api/save-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'advisory', title, pdf_b64: b64 })
+      });
+      const d = await saveRes.json();
+      if (d.success) {
+        btn.innerHTML = '✓ Saved to My Reports';
+        btn.style.background = '#1a5c0e';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg> Save to My Reports';
+          btn.style.background = '';
+        }, 3000);
+      } else {
+        throw new Error(d.error || 'Save failed');
+      }
+    };
+    reader.readAsDataURL(blob);
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = 'Save Failed — ' + e.message;
+    setTimeout(() => { btn.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg> Save to My Reports'; }, 3000);
+  }
+}
+</script>
+<style>
+.btn-save-report {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; background: #1a3a0a; color: #fff;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer; transition: background 0.2s;
+}
+.btn-save-report:hover { background: #0f2206; }
+.btn-save-report:disabled { opacity: 0.7; cursor: not-allowed; }
+.warning-banner { background: #fff8e6; border-left: 3px solid #e8a020; padding: 10px 14px; border-radius: 6px; font-size: 13px; color: #7a5800; margin-top: 10px; }
+</style>
+{% endblock %}

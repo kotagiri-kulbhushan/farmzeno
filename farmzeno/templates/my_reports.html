@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}My Reports — FarmZeno{% endblock %}
+
+{% block content %}
+<section class="reports-hero">
+  <div class="reports-hero-overlay"></div>
+  <div class="reports-hero-content">
+    <span class="hero-badge">MY REPORT LIBRARY</span>
+    <h1 class="reports-hero-title">Saved Reports</h1>
+    <p class="reports-hero-sub">All your advisory and disease detection PDFs in one place</p>
+  </div>
+</section>
+
+<section class="reports-section">
+  <div class="reports-container">
+
+    <!-- Stats bar -->
+    <div class="reports-stats">
+      <div class="rstat">
+        <span class="rstat-val" id="totalCount">{{ reports|length }}</span>
+        <span class="rstat-lbl">Total Reports</span>
+      </div>
+      <div class="rstat">
+        <span class="rstat-val" id="advisoryCount">{{ reports|selectattr('report_type','equalto','advisory')|list|length }}</span>
+        <span class="rstat-lbl">Advisory Reports</span>
+      </div>
+      <div class="rstat">
+        <span class="rstat-val" id="diseaseCount">{{ reports|selectattr('report_type','equalto','disease')|list|length }}</span>
+        <span class="rstat-lbl">Disease Reports</span>
+      </div>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="reports-tabs">
+      <button class="rtab active" data-filter="all">All Reports</button>
+      <button class="rtab" data-filter="advisory">Advisory</button>
+      <button class="rtab" data-filter="disease">Disease Detection</button>
+    </div>
+
+    <!-- Empty state -->
+    {% if not reports %}
+    <div class="reports-empty">
+      <div class="reports-empty-icon">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="8" y="6" width="32" height="36" rx="4"/>
+          <line x1="16" y1="18" x2="32" y2="18"/>
+          <line x1="16" y1="24" x2="32" y2="24"/>
+          <line x1="16" y1="30" x2="24" y2="30"/>
+        </svg>
+      </div>
+      <h3>No saved reports yet</h3>
+      <p>Generate an advisory or disease detection report and click "Save to My Reports" to store it here.</p>
+      <div class="reports-empty-actions">
+        <a href="/advisory" class="reports-empty-btn">Get Advisory</a>
+        <a href="/disease" class="reports-empty-btn-outline">Detect Disease</a>
+      </div>
+    </div>
+    {% else %}
+
+    <!-- Reports grid -->
+    <div class="reports-grid" id="reportsGrid">
+      {% for r in reports %}
+      <div class="report-card" data-type="{{ r.report_type }}" data-id="{{ r.id }}">
+        <div class="report-card-header report-card-header--{{ r.report_type }}">
+          {% if r.report_type == 'advisory' %}
+          <svg class="report-card-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+          <span class="report-card-type">Advisory</span>
+          {% else %}
+          <svg class="report-card-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a2 2 0 00-2 2v11a3 3 0 106 0V4a2 2 0 00-2-2H4zm1 14a1 1 0 100-2 1 1 0 000 2zm5-1.757l4.9-4.9a2 2 0 000-2.828L13.485 5.1a2 2 0 00-2.828 0L10 5.757v8.486z" clip-rule="evenodd"/></svg>
+          <span class="report-card-type">Disease Detection</span>
+          {% endif %}
+          <span class="report-card-date">{{ r.created_at.strftime('%d %b %Y, %H:%M') }}</span>
+        </div>
+        <div class="report-card-body">
+          <h3 class="report-card-title">{{ r.title }}</h3>
+          <p class="report-card-file">{{ r.filename }}</p>
+        </div>
+        <div class="report-card-actions">
+          <a href="/my-reports/download/{{ r.id }}" class="report-btn report-btn--download">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            Download PDF
+          </a>
+          <button class="report-btn report-btn--delete" onclick="deleteReport({{ r.id }}, this)">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* ── Hero ─────────────────────────────────────────── */
+.reports-hero {
+  position: relative; min-height: 200px;
+  display: flex; align-items: center;
+  background: url('https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=1400&q=80') center/cover no-repeat;
+}
+.reports-hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(10,30,5,0.78) 0%, rgba(58,122,26,0.55) 100%);
+}
+.reports-hero-content { position: relative; z-index: 2; padding: 48px 5%; }
+.reports-hero-content .hero-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 20px;
+  background: rgba(232,98,26,0.90); color: #fff; font-size: 11px;
+  font-weight: 700; letter-spacing: 0.08em; margin-bottom: 12px;
+}
+.reports-hero-title { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+.reports-hero-sub { color: rgba(255,255,255,0.75); font-size: 15px; }
+
+/* ── Section ──────────────────────────────────────── */
+.reports-section { background: #f4f7f1; min-height: 60vh; padding: 40px 0 60px; }
+.reports-container { max-width: 1100px; margin: 0 auto; padding: 0 5%; }
+
+/* ── Stats bar ────────────────────────────────────── */
+.reports-stats { display: flex; gap: 0; margin-bottom: 28px; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.rstat { flex: 1; padding: 20px 24px; text-align: center; border-right: 1px solid #f0f0f0; }
+.rstat:last-child { border-right: none; }
+.rstat-val { display: block; font-size: 28px; font-weight: 700; color: #3a7a1a; font-family: 'Playfair Display', serif; }
+.rstat-lbl { display: block; font-size: 12px; color: #888; margin-top: 2px; }
+
+/* ── Tabs ─────────────────────────────────────────── */
+.reports-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.rtab {
+  padding: 8px 18px; border-radius: 20px; border: 1.5px solid #d0e8d0;
+  background: #fff; color: #3a7a1a; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.rtab.active, .rtab:hover { background: #3a7a1a; color: #fff; border-color: #3a7a1a; }
+
+/* ── Empty ────────────────────────────────────────── */
+.reports-empty {
+  text-align: center; padding: 60px 20px;
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+.reports-empty-icon { width: 64px; height: 64px; margin: 0 auto 16px; color: #c8dfc8; }
+.reports-empty-icon svg { width: 100%; height: 100%; }
+.reports-empty h3 { font-family: 'Playfair Display', serif; font-size: 22px; color: #333; margin-bottom: 8px; }
+.reports-empty p { color: #777; font-size: 14px; max-width: 400px; margin: 0 auto 24px; line-height: 1.6; }
+.reports-empty-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.reports-empty-btn { padding: 10px 22px; background: #3a7a1a; color: #fff; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; }
+.reports-empty-btn-outline { padding: 10px 22px; border: 1.5px solid #3a7a1a; color: #3a7a1a; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; }
+
+/* ── Grid ─────────────────────────────────────────── */
+.reports-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+
+.report-card {
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;
+}
+.report-card:hover { transform: translateY(-3px); box-shadow: 0 6px 24px rgba(0,0,0,0.11); }
+
+.report-card-header {
+  padding: 14px 18px; display: flex; align-items: center; gap: 8px;
+}
+.report-card-header--advisory { background: linear-gradient(135deg, #eef8f2, #d8f0e0); }
+.report-card-header--disease  { background: linear-gradient(135deg, #fff3ec, #ffe0cc); }
+
+.report-card-icon { width: 18px; height: 18px; flex-shrink: 0; }
+.report-card-header--advisory .report-card-icon,
+.report-card-header--advisory .report-card-type { color: #3a7a1a; }
+.report-card-header--disease .report-card-icon,
+.report-card-header--disease .report-card-type  { color: #e8621a; }
+.report-card-type { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.report-card-date { margin-left: auto; font-size: 11px; color: #999; }
+
+.report-card-body { padding: 16px 18px; }
+.report-card-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; line-height: 1.4; }
+.report-card-file  { font-size: 11px; color: #aaa; font-family: monospace; }
+
+.report-card-actions { padding: 12px 18px 16px; display: flex; gap: 10px; }
+.report-btn {
+  flex: 1; padding: 9px 0; border-radius: 8px; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer; transition: all 0.2s; text-decoration: none; border: none;
+}
+.report-btn svg { width: 15px; height: 15px; }
+.report-btn--download { background: #3a7a1a; color: #fff; }
+.report-btn--download:hover { background: #2d5f14; }
+.report-btn--delete { background: #fff0f0; color: #c0392b; border: 1.5px solid #f5c0c0; }
+.report-btn--delete:hover { background: #ffe0e0; }
+
+.report-card.hiding { opacity: 0; transform: scale(0.95); transition: all 0.3s; }
+.report-card[data-hidden="true"] { display: none; }
+</style>
+
+<script>
+// Filter tabs
+document.querySelectorAll('.rtab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.rtab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filter = btn.dataset.filter;
+    document.querySelectorAll('.report-card').forEach(card => {
+      const match = filter === 'all' || card.dataset.type === filter;
+      card.dataset.hidden = match ? 'false' : 'true';
+    });
+  });
+});
+
+// Delete report
+function deleteReport(id, btn) {
+  if (!confirm('Delete this report? This cannot be undone.')) return;
+  fetch(`/my-reports/delete/${id}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        const card = btn.closest('.report-card');
+        card.classList.add('hiding');
+        setTimeout(() => {
+          card.remove();
+          updateCounts();
+        }, 320);
+      }
+    });
+}
+
+function updateCounts() {
+  const all      = document.querySelectorAll('.report-card').length;
+  const advisory = document.querySelectorAll('.report-card[data-type="advisory"]').length;
+  const disease  = document.querySelectorAll('.report-card[data-type="disease"]').length;
+  document.getElementById('totalCount').textContent    = all;
+  document.getElementById('advisoryCount').textContent = advisory;
+  document.getElementById('diseaseCount').textContent  = disease;
+  if (all === 0) location.reload();
+}
+</script>
+{% endblock %}

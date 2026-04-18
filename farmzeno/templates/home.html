@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}FarmZeno — Weather Dashboard{% endblock %}
+{% block content %}
+
+<!-- Hero with farm field background -->
+<div class="hero-bar hero-home">
+  <div class="hero-bg-overlay"></div>
+  <div class="hero-inner">
+    <div class="hero-content">
+      <div class="hero-tagline">Real-time Farm Intelligence</div>
+      <h1 class="hero-title">Farm Weather<br>Dashboard</h1>
+      <p class="hero-sub">Live conditions &amp; 24-hour forecast for smarter farming decisions</p>
+    </div>
+    <div class="hero-search-card">
+      <div class="search-card-label">Enter your farm location</div>
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+          <input type="text" id="cityInput" class="search-input" placeholder="e.g. Ludhiana, Punjab..."/>
+        </div>
+        <button class="btn-orange" onclick="fetchWeather()">Get Weather</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="weatherLoading" class="loading-box hidden"><div class="spinner"></div><p>Fetching live weather data...</p></div>
+  <div id="weatherError" class="error-box hidden"></div>
+
+  <div id="emptyState" class="empty-state">
+    <div class="empty-farm-bg"></div>
+    <div class="empty-content">
+      <div class="feature-cards-row">
+        <div class="feature-card">
+          <div class="fc-icon fc-green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div class="fc-title">Live Weather</div>
+          <div class="fc-desc">Real-time conditions from OpenWeatherMap</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon fc-orange">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-3-3v6"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+          </div>
+          <div class="fc-title">IMD Advisory</div>
+          <div class="fc-desc">Official bulletins with RAG-powered insights</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon fc-green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V12M12 12C12 7 7 3 3 5c0 5 4 9 9 7zM12 12C12 7 17 3 21 5c0 5-4 9-9 7z"/></svg>
+          </div>
+          <div class="fc-title">ML Crop Advice</div>
+          <div class="fc-desc">95.6% accurate Random Forest predictions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="weatherSection" class="hidden">
+    <div class="section-heading">
+      <span class="section-dot green-dot"></span>
+      Current Conditions
+    </div>
+    <div class="weather-grid" id="currentCards"></div>
+
+    <div class="section-heading" style="margin-top:2.5rem">
+      <span class="section-dot orange-dot"></span>
+      24-Hour Forecast
+    </div>
+    <div class="weather-grid" id="forecastCards"></div>
+
+    <div class="qlinks-heading">Explore more tools</div>
+    <div class="quick-links-row">
+      <a href="/advisory" class="qlink-card">
+        <div class="qlink-icon-wrap qlink-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+        </div>
+        <div class="qlink-text">
+          <div class="qlink-title">Full Advisory</div>
+          <div class="qlink-desc">IMD bulletin + prioritized tips</div>
+        </div>
+        <svg class="qlink-arrow" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      </a>
+      <a href="/disease" class="qlink-card">
+        <div class="qlink-icon-wrap qlink-orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v3m0 3v.01"/></svg>
+        </div>
+        <div class="qlink-text">
+          <div class="qlink-title">Disease Detection</div>
+          <div class="qlink-desc">AI leaf image analysis</div>
+        </div>
+        <svg class="qlink-arrow" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      </a>
+      <a href="/crop" class="qlink-card">
+        <div class="qlink-icon-wrap qlink-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V12M12 12C12 7 7 3 3 5c0 5 4 9 9 7zM12 12C12 7 17 3 21 5c0 5-4 9-9 7z"/></svg>
+        </div>
+        <div class="qlink-text">
+          <div class="qlink-title">Crop Recommendations</div>
+          <div class="qlink-desc">ML model with 70 crop classes</div>
+        </div>
+        <svg class="qlink-arrow" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function fetchWeather(){
+  const city = document.getElementById('cityInput').value.trim();
+  if(!city){alert('Please enter a city name.');return;}
+  show('weatherLoading'); hide('emptyState'); hide('weatherSection'); hide('weatherError');
+  fetch('/api/weather-summary?city='+encodeURIComponent(city))
+    .then(r=>r.json()).then(data=>{
+      hide('weatherLoading');
+      if(!data.success){showErr('weatherError',data.error||'Could not fetch weather.');return;}
+      renderWeather(data); saveCity(data.city);
+    }).catch(e=>{hide('weatherLoading');showErr('weatherError','Network error: '+e.message);});
+}
+function renderWeather(data){
+  const w=data.weather, f=data.forecast;
+  const cur=[
+    {icon:'🌡️',label:'Temperature', value:w.temp+'°C', sub:w.description},
+    {icon:'💧',label:'Humidity',    value:w.humidity+'%', sub:'Relative humidity'},
+    {icon:'💨',label:'Wind Speed',  value:w.wind_speed+' m/s', sub:'Current wind'},
+    {icon:'🌧️',label:'Rainfall 1h', value:w.rain_1h+' mm', sub:'Last 1 hour'},
+    {icon:'🔵',label:'Pressure',    value:w.pressure+' hPa', sub:'Atmospheric'},
+    {icon:'☁️',label:'Cloud Cover', value:(w.clouds??'—')+'%', sub:'Cloud cover'},
+  ];
+  const fc=[
+    {icon:'🌡️',label:'Temp Range',    value:f.temp_min_24h+'°C – '+f.temp_max_24h+'°C', sub:'Next 24 h'},
+    {icon:'🌧️',label:'Total Rainfall', value:f.rain_total_24h+' mm', sub:'Forecast rain'},
+    {icon:'💨',label:'Max Wind',       value:f.wind_max_24h+' m/s', sub:'Peak wind'},
+  ];
+  document.getElementById('currentCards').innerHTML = cur.map(c=>wcard(c,'')).join('');
+  document.getElementById('forecastCards').innerHTML = fc.map(c=>wcard(c,'forecast-card')).join('');
+  show('weatherSection');
+}
+function wcard(c,extra){
+  return `<div class="weather-card ${extra}"><div class="wcard-emoji">${c.icon}</div><div class="wcard-label">${c.label}</div><div class="wcard-value">${c.value}</div><div class="wcard-sub">${c.sub}</div></div>`;
+}
+document.getElementById('cityInput').addEventListener('keydown',e=>{if(e.key==='Enter')fetchWeather();});
+const saved=getSavedCity(); if(saved){document.getElementById('cityInput').value=saved;fetchWeather();}
+</script>
+{% endblock %}
