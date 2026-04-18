@@ -124,7 +124,7 @@ https://drive.google.com/drive/folders/177SorOMPPzBFFraebX9vlgQJwnOFLjBT?usp=sha
 Place them inside:
 
 ```
-farmzeno/models/
+farmzeno (project folder)/models/
 ```
 
 Required files:
@@ -213,7 +213,7 @@ http://localhost:5000
 # 📂 Project Structure
 
 ```
-farmzeno/
+farmzeno (project folder)/
 ├── app.py
 ├── requirements.txt
 ├── README.md
